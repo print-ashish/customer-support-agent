@@ -1,0 +1,5 @@
+<clickhouse>
+    <!-- Cap memory so ClickHouse doesn't OOM on Docker Desktop -->
+    <max_server_memory_usage_to_ram_ratio>0.4</max_server_memory_usage_to_ram_ratio>
+    <max_concurrent_queries>20</max_concurrent_queries>
+</clickhouse>

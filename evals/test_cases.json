@@ -1,0 +1,18 @@
+[
+    {
+        "input": "Where is my order 1234?",
+        "expected_topic": "order_status"
+    },
+    {
+        "input": "I need a refund for my last purchase.",
+        "expected_topic": "refund"
+    },
+    {
+        "input": "Do you guys ship to Canada?",
+        "expected_topic": "faq"
+    },
+    {
+        "input": "My order arrived broken and I am extremely angry!",
+        "expected_topic": "escalation"
+    }
+]

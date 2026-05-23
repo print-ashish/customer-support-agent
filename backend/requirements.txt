@@ -2,6 +2,7 @@ fastapi
 uvicorn
 sqlalchemy
 psycopg[binary]
+asyncpg
 pgvector
 alembic
 pydantic
@@ -10,6 +11,7 @@ python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
 langgraph
+langgraph-checkpoint-postgres
 langchain
 langchain-core
 langchain-groq

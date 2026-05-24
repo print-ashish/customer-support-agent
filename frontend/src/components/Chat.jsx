@@ -12,6 +12,7 @@ const ROLE_LABEL = {
 
 export default function Chat({ token }) {
   const [messages, setMessages] = useState([]);
+  const [conversationId, setConversationId] = useState(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -19,7 +20,10 @@ export default function Chat({ token }) {
 
   useEffect(() => {
     getHistory(token)
-      .then(setMessages)
+      .then(({ conversation_id, messages }) => {
+        setConversationId(conversation_id);
+        setMessages(messages ?? []);
+      })
       .catch(() => setMessages([]))
       .finally(() => setHistoryLoading(false));
   }, [token]);
@@ -59,6 +63,11 @@ export default function Chat({ token }) {
 
   return (
     <div className="chat">
+      {conversationId && (
+        <div className="session-badge">
+          Session&nbsp;<code>#{conversationId}</code>
+        </div>
+      )}
       <div className="chat-messages">
         {historyLoading ? (
           <p className="muted center">Loading conversation…</p>

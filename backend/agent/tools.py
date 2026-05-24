@@ -2,10 +2,11 @@ from typing import Annotated
 
 from langchain_core.tools import tool, InjectedToolArg
 from langchain_core.runnables import RunnableConfig
-from rag.retriever import search_faq as retrieve_faq
-from db.session import async_session_maker
-from db.models import Order, Escalation, Message as DBMessage, Conversation
 from sqlalchemy import select
+
+from db.models import Order, Escalation, Message as DBMessage, Conversation
+from db.session import async_session_maker
+from rag.retriever import search_faq as search_faq_async
 
 
 def _user_id(config: RunnableConfig) -> int | None:
@@ -22,6 +23,7 @@ async def get_order_status(
     config: Annotated[RunnableConfig, InjectedToolArg()],
 ) -> str:
     """Check the status of a specific order."""
+    print("checking for order", order_id)
     user_id = _user_id(config)
     if not user_id:
         return "Error: User ID not found in context."
@@ -66,7 +68,7 @@ async def process_refund(
 @tool
 async def search_faq(query: str) -> str:
     """Search the FAQ and policy documents for answers."""
-    return await retrieve_faq(query)
+    return await search_faq_async(query)
 
 
 @tool
@@ -75,24 +77,28 @@ async def recall_memory(
     *,
     config: Annotated[RunnableConfig, InjectedToolArg()],
 ) -> str:
-    """Recall the last N messages from the user's past conversations."""
+    """Recall the last N messages from the current chat session."""
+    conversation_id = _conversation_id(config)
     user_id = _user_id(config)
     if not user_id:
         return "Error: User ID not found in context."
 
     async with async_session_maker() as db:
-        result = await db.execute(
-            select(Conversation)
-            .filter(Conversation.user_id == user_id)
-            .order_by(Conversation.created_at.desc())
-        )
-        convo = result.scalars().first()
-        if not convo:
-            return "No past conversations found."
+        convo_id = conversation_id
+        if not convo_id:
+            result = await db.execute(
+                select(Conversation)
+                .filter(Conversation.user_id == user_id)
+                .order_by(Conversation.created_at.desc())
+            )
+            convo = result.scalars().first()
+            if not convo:
+                return "No past conversations found."
+            convo_id = convo.id
 
         result_messages = await db.execute(
             select(DBMessage)
-            .filter(DBMessage.conversation_id == convo.id)
+            .filter(DBMessage.conversation_id == convo_id)
             .order_by(DBMessage.created_at.desc())
             .limit(limit)
         )
@@ -115,8 +121,7 @@ async def escalate_to_human(
         return "Error: Conversation ID not found in context."
 
     async with async_session_maker() as db:
-        escalation = Escalation(conversation_id=conversation_id, reason=reason)
-        db.add(escalation)
+        db.add(Escalation(conversation_id=conversation_id, reason=reason))
         await db.commit()
         return "Issue escalated successfully. A human agent will respond shortly."
 

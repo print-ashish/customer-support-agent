@@ -1,6 +1,7 @@
 import os
 import sys
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer , CrossEncoder
+
 
 # Add the backend dir to sys.path so we can import db
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -11,30 +12,58 @@ from sqlalchemy import select
 
 # Initialize embedding model (768 dimensions) - must match ingest.py
 embedder = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')        # ADD THIS
+
+
 
 async def search_faq(query: str, top_k: int = 3):
-    """
-    Search the documents table for the most relevant FAQ chunks.
-    """
     async with async_session_maker() as db:
         query_embedding = embedder.encode(query).tolist()
         
-        # pgvector cosine distance: <->
+        # CHANGE 1 — fetch 20 instead of top_k
         result = await db.execute(
             select(Document).order_by(
                 Document.embedding.cosine_distance(query_embedding)
-            ).limit(top_k)
+            ).limit(20)                                                  # was top_k
         )
-        results = result.scalars().all()
+        candidates = result.scalars().all()
         
-        if not results:
+        if not candidates:
             return "No relevant FAQ found."
-            
+        
+        # ADD THIS BLOCK — reranker scores all 20 candidates
+        pairs = [[query, doc.content] for doc in candidates]
+        scores = reranker.predict(pairs)
+        
+        # sort by score, keep top_k
+        ranked = sorted(zip(scores, candidates), key=lambda x: x[0], reverse=True)
+        results = [doc for _, doc in ranked[:top_k]]                    # was result.scalars().all()
+        
         context = []
         for doc in results:
             context.append(f"Source: {doc.source}\nContent: {doc.content}")
             
         return "\n\n---\n\n".join(context)
 
-# ans = search_faq("refund policy")
-# print(ans)
+
+def search_faq_sync(query: str, top_k: int = 3) -> str:
+    with SessionLocal() as db:
+        query_embedding = embedder.encode(query).tolist()
+        result = db.execute(
+            select(Document).order_by(
+                Document.embedding.cosine_distance(query_embedding)
+            ).limit(20)
+        )
+        candidates = result.scalars().all()
+        if not candidates:
+            return "No relevant FAQ found."
+
+        pairs = [[query, doc.content] for doc in candidates]
+        scores = reranker.predict(pairs)
+        ranked = sorted(zip(scores, candidates), key=lambda x: x[0], reverse=True)
+        results = [doc for _, doc in ranked[:top_k]]
+
+        return "\n\n---\n\n".join(
+            f"Source: {doc.source}\nContent: {doc.content}" for doc in results
+        )
+

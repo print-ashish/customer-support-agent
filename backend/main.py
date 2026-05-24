@@ -121,10 +121,12 @@ def read_root():
     return {"message": "Welcome to AI Customer Support Agent API"}
 
 import asyncio
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from agent.graph import get_agent_app
 from memory.store import get_latest_conversation, create_conversation, save_message, get_conversation_history
+# from langfuse.langchain import CallbackHandler
 from langfuse.langchain import CallbackHandler
+
 
 langfuse_handler = CallbackHandler()
 
@@ -135,13 +137,51 @@ class ChatResponse(BaseModel):
     response: str
     escalated: bool = False
 
+
+def _final_agent_reply(messages) -> str:
+    """Last assistant message with text (skip tool-call-only turns)."""
+    for msg in reversed(messages):
+        if not isinstance(msg, AIMessage) or msg.tool_calls:
+            continue
+        content = msg.content
+        if isinstance(content, str) and content.strip():
+            return content
+        if isinstance(content, list):
+            text = "".join(
+                block.get("text", "")
+                for block in content
+                if isinstance(block, dict) and block.get("type") == "text"
+            ).strip()
+            if text:
+                return text
+    last = messages[-1]
+    return last.content if hasattr(last, "content") and last.content else str(last)
+
+
+from langfuse import Langfuse, propagate_attributes
+from langfuse.langchain import CallbackHandler
+
+langfuse = Langfuse(
+    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+    secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+    host=os.getenv("LANGFUSE_HOST"),
+)
+
 @app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+async def chat(
+    request: ChatRequest,
+    db: AsyncSession = Depends(get_db),
+    user: models.User = Depends(get_current_user)
+):
+
     convo = await get_latest_conversation(db, user.id)
+
     if not convo:
         convo = await create_conversation(db, user.id)
 
     await save_message(db, convo.id, "user", request.message)
+
+    handler = CallbackHandler()
 
     config = {
         "configurable": {
@@ -149,28 +189,127 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db), user: m
             "user_id": user.id,
             "conversation_id": convo.id
         },
-        "callbacks": [langfuse_handler]
+        "callbacks": [handler],
     }
+
     input_state = {
         "messages": [HumanMessage(content=request.message)],
         "user_id": user.id,
     }
 
-    final_state = await get_agent_app().ainvoke(input_state, config=config)
+    with propagate_attributes(
+        session_id=f"conversation-{convo.id}",
+        user_id=str(user.id),
+    ):
+
+        final_state = await get_agent_app().ainvoke(
+            input_state,
+            config=config
+        )
 
     messages = final_state.get("messages", [])
-    last_message = messages[-1]
+    response_text = _final_agent_reply(messages)
 
-    response_text = last_message.content if hasattr(last_message, 'content') else str(last_message)
     await save_message(db, convo.id, "agent", response_text)
 
-    escalated = False
-    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-        if any(call.get("name") == "escalate_to_human" for call in last_message.tool_calls):
-            escalated = True
-            response_text = "I've escalated your issue to a human agent. They will review it shortly."
+    langfuse.flush()
 
-    return {"response": response_text, "escalated": escalated}
+    return {
+        "response": response_text,
+        "escalated": False
+    }
+
+# @app.post("/chat", response_model=ChatResponse)
+# async def chat(
+#     request: ChatRequest,
+#     db: AsyncSession = Depends(get_db),
+#     user: models.User = Depends(get_current_user)
+# ):
+#     convo = await get_latest_conversation(db, user.id)
+
+#     if not convo:
+#         convo = await create_conversation(db, user.id)
+
+#     await save_message(db, convo.id, "user", request.message)
+
+#     langfuse_handler = CallbackHandler(
+#         secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+#         public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+#         host=os.getenv("LANGFUSE_HOST"),
+#         session_id=f"conversation-{convo.id}",
+#         user_id=str(user.id),
+#     )
+
+#     config = {
+#         "configurable": {
+#             "thread_id": str(convo.id),
+#             "user_id": user.id,
+#             "conversation_id": convo.id,
+#         },
+#         "callbacks": [langfuse_handler],
+#         "metadata": {
+#             "conversation_id": str(convo.id),
+#             "user_email": user.email,
+#         }
+#     }
+
+#     input_state = {
+#         "messages": [HumanMessage(content=request.message)],
+#         "user_id": user.id,
+#     }
+
+#     final_state = await get_agent_app().ainvoke(
+#         input_state,
+#         config=config
+#     )
+
+#     messages = final_state.get("messages", [])
+#     response_text = _final_agent_reply(messages)
+
+#     await save_message(db, convo.id, "agent", response_text)
+
+#     return {
+#         "response": response_text,
+#         "escalated": False
+#     }
+
+# @app.post("/chat", response_model=ChatResponse)
+# async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+#     convo = await get_latest_conversation(db, user.id)
+#     if not convo:
+#         convo = await create_conversation(db, user.id)
+
+#     await save_message(db, convo.id, "user", request.message)
+
+#     config = {
+#         "configurable": {
+#             "thread_id": str(convo.id),
+#             "user_id": user.id,
+#             "conversation_id": convo.id
+#         },
+#         # "callbacks": [langfuse_handler]
+#         "callbacks": [langfuse_handler]
+#     }
+#     input_state = {
+#         "messages": [HumanMessage(content=request.message)],
+#         "user_id": user.id,
+#     }
+
+#     final_state = await get_agent_app().ainvoke(input_state, config=config)
+
+#     messages = final_state.get("messages", [])
+#     response_text = _final_agent_reply(messages)
+#     await save_message(db, convo.id, "agent", response_text)
+
+#     escalated = False
+#     for msg in messages:
+#         if isinstance(msg, AIMessage) and msg.tool_calls:
+#             if any(call.get("name") == "escalate_to_human" for call in msg.tool_calls):
+#                 escalated = True
+#                 response_text = "I've escalated your issue to a human agent. They will review it shortly."
+#                 break
+
+#     return {"response": response_text, "escalated": escalated}
 
 @app.get("/chat/history")
 async def chat_history(db: AsyncSession = Depends(get_db), user: models.User = Depends(get_current_user)):

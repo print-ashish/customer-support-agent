@@ -443,6 +443,19 @@ body {
   letter-spacing: 0;
 }
 
+.session-badge {
+  padding: 0.3rem 1.25rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.session-badge code {
+  font-size: 0.72rem;
+  color: var(--accent);
+}
+
 .typing .dots {
   display: flex;
   gap: 4px;

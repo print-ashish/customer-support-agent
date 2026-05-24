@@ -9,5 +9,5 @@ class AgentState(TypedDict):
     order_status: str | None
     refund_eligible: bool | None
     escalated: bool
-    retry_count: int
+
     context: str | None

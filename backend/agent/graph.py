@@ -20,7 +20,6 @@ def get_agent_app():
             should_continue,
             {
                 "tools": "tools",
-                "escalate": "tools",
                 "end": END
             }
         )

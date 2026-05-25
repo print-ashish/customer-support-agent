@@ -57,7 +57,21 @@ services:
       retries: 10
       start_period: 1s
 
-  # ── Redis ─────────────────────────────────────────────────────────────────
+  # ── Redis (app: rate limits, cache) ─────────────────────────────────────
+  redis-app:
+    image: redis:7
+    restart: always
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - redis_app_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis (Langfuse) ──────────────────────────────────────────────────────
   redis:
     image: redis:7
     restart: always
@@ -190,6 +204,7 @@ services:
       <<: *langfuse-env
 
 volumes:
+  redis_app_data:
   postgres_data:
   langfuse_postgres_data:
   langfuse_clickhouse_data:

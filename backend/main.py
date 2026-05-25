@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
@@ -8,6 +8,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from db.session import engine, get_db
 from db import models
+from redis_client import close_redis, ping_redis
+from ratelimit import rate_limit_auth, rate_limit_chat_user, rate_limit_history_user
 from auth.jwt import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from datetime import timedelta
 from auth.jwt import jwt, JWTError, SECRET_KEY, ALGORITHM
@@ -24,6 +26,8 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(models.Base.metadata.create_all)
 
     yield
+
+    await close_redis()
 
 app = FastAPI(title="AI Customer Support Agent", lifespan=lifespan)
 
@@ -85,8 +89,18 @@ async def get_current_user(
 
     return user
 
+@app.get("/health")
+async def health():
+    return {"status": "ok", "redis": await ping_redis()}
+
+
 @app.post("/auth/register", response_model=UserResponse)
-async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(
+    user: UserCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    await rate_limit_auth(request)
     result = await db.execute(select(models.User).filter(models.User.email == user.email))
     db_user = result.scalars().first()
     if db_user:
@@ -100,7 +114,12 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     return new_user
 
 @app.post("/auth/login", response_model=Token)
-async def login(form_data: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(
+    form_data: LoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    await rate_limit_auth(request)
     result = await db.execute(select(models.User).filter(models.User.email == form_data.email))
     user = result.scalars().first()
     if not user or not verify_password(form_data.password, user.password_hash):
@@ -171,8 +190,9 @@ langfuse = Langfuse(
 async def chat(
     request: ChatRequest,
     db: AsyncSession = Depends(get_db),
-    user: models.User = Depends(get_current_user)
+    user: models.User = Depends(get_current_user),
 ):
+    await rate_limit_chat_user(user.id)
 
     convo = await get_latest_conversation(db, user.id)
 
@@ -312,7 +332,11 @@ async def chat(
 #     return {"response": response_text, "escalated": escalated}
 
 @app.get("/chat/history")
-async def chat_history(db: AsyncSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+async def chat_history(
+    db: AsyncSession = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    await rate_limit_history_user(user.id)
     convo = await get_latest_conversation(db, user.id)
     if not convo:
         return []

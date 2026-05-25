@@ -17,4 +17,5 @@ langchain-core
 langchain-groq
 langfuse
 python-dotenv
+redis>=5.0.0
 sentence-transformers

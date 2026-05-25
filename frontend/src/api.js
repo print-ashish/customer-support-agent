@@ -15,7 +15,11 @@ async function request(path, options = {}) {
     const msg = Array.isArray(detail)
       ? detail.map((d) => d.msg).join(", ")
       : detail || data.message || "Request failed";
-    throw new Error(typeof msg === "string" ? msg : "Request failed");
+    const err = new Error(typeof msg === "string" ? msg : "Request failed");
+    if (res.status === 429) {
+      err.retryAfter = res.headers.get("Retry-After");
+    }
+    throw err;
   }
   return data;
 }

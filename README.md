@@ -59,11 +59,12 @@ Enforces a strict, deterministic state machine directly at the database layer. E
 - Leverages `pgvector` for native cosine similarity lookup inside PostgreSQL.
 - Includes a duplicate-safe ingestion workflow that clears vector segments before re-indexing to ensure pristine retriever search quality.
 
-### 5. Categorized Human-in-the-Loop Escalations
-- For complex inquiries or policy disputes, the agent can escalate the conversation to a human.
-- Saves the exact customer `user_id` and classifies the escalation into semantic categories (`billing_dispute`, `damaged_item`, `policy_exception`, `fraud`, `general`), populating an interactive supervisor dashboard.
+### 6. Full-Stack Langfuse Observability & Tracing
+- Integrates **Langfuse** natively via LangChain Callback Handlers to trace every single LLM call, token usage, tool invocation, and latency span.
+- Propagates custom frontend metadata such as session IDs (`session_id`) and authenticated user IDs (`user_id`) using contextual tracing attributes.
+- Features LLM-as-a-Judge evaluations inside the evaluation pipeline (`evals/run_evals.py`), feeding metrics for *Relevance*, *Factual Accuracy*, and *Professionalism* directly back into the Langfuse dashboard.
 
-### 6. Security & Infrastructure
+### 7. Security & Infrastructure
 - **JWT Authentication**: Secure user endpoints with token lifetimes.
 - **Sliding Rate Limiter**: Implemented using Redis to protect public `/chat` and `/auth` routes against brute-force vector generation requests.
 

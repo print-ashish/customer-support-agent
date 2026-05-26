@@ -2,8 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from db.models import Conversation, Message as DBMessage
 
-async def create_conversation(db: AsyncSession, user_id: int):
-    convo = Conversation(user_id=user_id)
+async def create_conversation(db: AsyncSession, user_id: int, session_id: str = None):
+    convo = Conversation(user_id=user_id, session_id=session_id)
     db.add(convo)
     await db.commit()
     await db.refresh(convo)

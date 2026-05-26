@@ -16,6 +16,10 @@ embedder = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
 def ingest_docs(docs_dir: str):
     db = SessionLocal()
     try:
+        # Delete existing documents to prevent duplication on re-run
+        db.query(Document).delete()
+        db.commit()
+
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         
         for filename in os.listdir(docs_dir):

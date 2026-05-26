@@ -7,6 +7,7 @@ from langgraph.prebuilt import ToolNode
 
 from agent.state import AgentState
 from agent.tools import tools
+from agent.system_prompt import SYSTEM_PROMPT
 
 load_dotenv()
 
@@ -20,9 +21,9 @@ tool_node = ToolNode(tools)
 async def agent_node(state: AgentState):
     messages = list(state["messages"])
 
-    system_content = "You are a helpful customer support agent for an e-commerce company. "
+    system_content = SYSTEM_PROMPT
     if state.get("context"):
-        system_content += f"\nRelevant Information:\n{state['context']}\n"
+        system_content += f"\nRelevant Information from RAG/FAQ Knowledge Base:\n{state['context']}\n"
 
     system_msg = SystemMessage(content=system_content)
     if not messages or not isinstance(messages[0], SystemMessage):

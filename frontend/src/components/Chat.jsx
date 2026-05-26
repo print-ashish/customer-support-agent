@@ -16,21 +16,42 @@ export default function Chat({ token }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [sessionId, setSessionId] = useState(() => {
+    let sid = sessionStorage.getItem("chat_session_id");
+    if (!sid) {
+      sid = typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      sessionStorage.setItem("chat_session_id", sid);
+    }
+    return sid;
+  });
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    getHistory(token)
+    setHistoryLoading(true);
+    getHistory(token, sessionId)
       .then(({ conversation_id, messages }) => {
         setConversationId(conversation_id);
         setMessages(messages ?? []);
       })
       .catch(() => setMessages([]))
       .finally(() => setHistoryLoading(false));
-  }, [token]);
+  }, [token, sessionId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  function startNewSession() {
+    const newSid = typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    sessionStorage.setItem("chat_session_id", newSid);
+    setSessionId(newSid);
+    setConversationId(null);
+    setMessages([]);
+  }
 
   async function handleSend(e) {
     e.preventDefault();
@@ -42,7 +63,7 @@ export default function Chat({ token }) {
     setLoading(true);
 
     try {
-      const { response, escalated } = await sendMessage(token, text);
+      const { response, escalated } = await sendMessage(token, text, sessionId);
       setMessages((prev) => [
         ...prev,
         {
@@ -63,11 +84,14 @@ export default function Chat({ token }) {
 
   return (
     <div className="chat">
-      {conversationId && (
+      <div className="session-badge-container">
         <div className="session-badge">
-          Session&nbsp;<code>#{conversationId}</code>
+          Session&nbsp;<code>#{sessionId ? sessionId.substring(0, 8) + "..." : "none"}</code>
         </div>
-      )}
+        <button type="button" className="btn secondary btn-sm" onClick={startNewSession}>
+          New Chat
+        </button>
+      </div>
       <div className="chat-messages">
         {historyLoading ? (
           <p className="muted center">Loading conversation…</p>

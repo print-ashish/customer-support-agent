@@ -40,15 +40,16 @@ export function login(email, password) {
   });
 }
 
-export function getHistory(token) {
-  return request("/chat/history", { headers: authHeaders(token) });
+export function getHistory(token, sessionId) {
+  const url = sessionId ? `/chat/history?session_id=${encodeURIComponent(sessionId)}` : "/chat/history";
+  return request(url, { headers: authHeaders(token) });
 }
 
-export function sendMessage(token, message) {
+export function sendMessage(token, message, sessionId) {
   return request("/chat", {
     method: "POST",
     headers: authHeaders(token),
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, session_id: sessionId }),
   });
 }
 

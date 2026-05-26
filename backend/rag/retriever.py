@@ -27,8 +27,11 @@ async def search_faq(query: str, top_k: int = 3):
             ).limit(20)                                                  # was top_k
         )
         candidates = result.scalars().all()
+
+        print("retrived docs ==" , candidates)
         
         if not candidates:
+            print("nothing found ")
             return "No relevant FAQ found."
         
         # ADD THIS BLOCK — reranker scores all 20 candidates
@@ -42,6 +45,8 @@ async def search_faq(query: str, top_k: int = 3):
         context = []
         for doc in results:
             context.append(f"Source: {doc.source}\nContent: {doc.content}")
+
+        print("context from the rag == " , context)
             
         return "\n\n---\n\n".join(context)
 

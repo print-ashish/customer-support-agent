@@ -9,3 +9,12 @@ A: We accept all major credit cards, PayPal, and Apple Pay.
 
 Q: How do I change my shipping address?
 A: You can change your shipping address before the order is dispatched by contacting support. Once dispatched, we cannot change it.
+
+Q: Can I cancel my order?
+A: Yes! You can cancel your order at any time while it is in the "processing" or "shipped" status. If the order has already been shipped and has left our warehouse, you can still cancel it, but you will need to refuse the package at the door when it is delivered, or return it using our free return label once it arrives. Once an order status is "delivered" or "refunded", it cannot be cancelled; for delivered orders, you may request a refund instead.
+
+Q: What is your refund policy?
+A: We offer a full refund for eligible items returned within 30 days of the delivery date. The refund will be credited to your original payment method within 5-7 business days.
+
+Q: Are there any items that are non-refundable?
+A: Yes. Perishable goods (like food, juices, plants) and custom/personalized items are non-refundable and not eligible for returns or refunds. Additionally, any request made after the 30-day delivery window will be rejected.

@@ -24,6 +24,30 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(models.Base.metadata.create_all)
+        # Auto-migration for existing conversations table to add session_id
+        try:
+            await conn.execute(text("ALTER TABLE conversations ADD COLUMN IF NOT EXISTS session_id VARCHAR UNIQUE"))
+        except Exception as e:
+            print(f"Migration note: {e}")
+
+        # Auto-migration for existing orders table to add lifecycle columns
+        try:
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS item_name VARCHAR"))
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS item_category VARCHAR"))
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number VARCHAR"))
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP WITH TIME ZONE"))
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancellation_reason VARCHAR"))
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP WITH TIME ZONE"))
+            await conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMP WITH TIME ZONE"))
+        except Exception as e:
+            print(f"Migration note (orders): {e}")
+
+        # Auto-migration for existing escalations table to add category and user_id columns
+        try:
+            await conn.execute(text("ALTER TABLE escalations ADD COLUMN IF NOT EXISTS category VARCHAR"))
+            await conn.execute(text("ALTER TABLE escalations ADD COLUMN IF NOT EXISTS user_id INTEGER"))
+        except Exception as e:
+            print(f"Migration note (escalations): {e}")
 
     yield
 
@@ -151,6 +175,7 @@ langfuse_handler = CallbackHandler()
 
 class ChatRequest(BaseModel):
     message: str
+    session_id: str
 
 class ChatResponse(BaseModel):
     response: str
@@ -194,10 +219,15 @@ async def chat(
 ):
     await rate_limit_chat_user(user.id)
 
-    convo = await get_latest_conversation(db, user.id)
+    convo = None
+    if request.session_id:
+        result = await db.execute(
+            select(models.Conversation).filter(models.Conversation.session_id == request.session_id)
+        )
+        convo = result.scalars().first()
 
     if not convo:
-        convo = await create_conversation(db, user.id)
+        convo = await create_conversation(db, user.id, session_id=request.session_id)
 
     await save_message(db, convo.id, "user", request.message)
 
@@ -218,7 +248,7 @@ async def chat(
     }
 
     with propagate_attributes(
-        session_id=f"conversation-{convo.id}",
+        session_id=convo.session_id or f"conversation-{convo.id}",
         user_id=str(user.id),
     ):
 
@@ -333,14 +363,25 @@ async def chat(
 
 @app.get("/chat/history")
 async def chat_history(
+    session_id: str = None,
     db: AsyncSession = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
     await rate_limit_history_user(user.id)
-    convo = await get_latest_conversation(db, user.id)
+    convo = None
+    if session_id:
+        result = await db.execute(
+            select(models.Conversation).filter(models.Conversation.session_id == session_id)
+        )
+        convo = result.scalars().first()
+    else:
+        convo = await get_latest_conversation(db, user.id)
+
     if not convo:
-        return []
-    return await get_conversation_history(db, convo.id)
+        return {"conversation_id": session_id, "messages": []}
+
+    messages = await get_conversation_history(db, convo.id)
+    return {"conversation_id": convo.session_id, "messages": messages}
 
 @app.get("/admin/dashboard")
 async def admin_dashboard(db: AsyncSession = Depends(get_db)):

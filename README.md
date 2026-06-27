@@ -3,6 +3,8 @@
 An enterprise-grade, autonomous customer support agent powered by **LangGraph**, **LangChain**, and **PostgreSQL (with `pgvector`)**. The system integrates semantic document lookup (RAG), transactional order lifecycles with strict state-machine guardrails, defensive tool execution, and detailed observability.
 
 ---
+##Demo Video 
+https://youtu.be/Kb6mnA9MS0Y
 
 ## 🏗️ System Architecture
 

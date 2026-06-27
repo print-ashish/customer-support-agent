@@ -1,0 +1,58 @@
+[
+  {
+    "name": "faq_followup",
+    "turns": [
+      "Do you ship internationally?",
+      "How long does international shipping take?"
+    ],
+    "scenario": "User asks about international shipping, then asks about delivery time.",
+    "ground_truth": "Agent should confirm international shipping is available and state it usually takes 7-14 business days.",
+    "expected_tools": ["search_faq"],
+    "eval_category": "rag"
+  },
+  {
+    "name": "refund_policy_then_personalized",
+    "turns": [
+      "What is your refund window?",
+      "Can I return a custom engraved item?"
+    ],
+    "scenario": "User asks about refund window, then asks about personalized items.",
+    "ground_truth": "Agent should say refunds must be requested within 30 days of delivery, and personalized/custom items are non-refundable.",
+    "expected_tools": ["search_faq"],
+    "eval_category": "rag"
+  },
+  {
+    "name": "order_status_lookup",
+    "turns": [
+      "Can you check my orders?",
+      "What about order 2?"
+    ],
+    "scenario": "User asks to see orders, then asks for status of order 2.",
+    "ground_truth": "Agent should show order 2 (Running Shoes) is shipped with tracking info.",
+    "expected_tools": ["list_my_orders", "get_order_status"],
+    "eval_category": "tool"
+  },
+  {
+    "name": "refund_flow",
+    "turns": [
+      "I want a refund",
+      "It's for order 3",
+      "Am I eligible?"
+    ],
+    "scenario": "User wants a refund, identifies order 3 (delivered laptop), asks about eligibility.",
+    "ground_truth": "Agent should confirm order 3 (Laptop) is eligible for a refund within the 30-day window.",
+    "expected_tools": ["get_order_status", "check_refund_eligibility"],
+    "eval_category": "tool"
+  },
+  {
+    "name": "track_then_policy",
+    "turns": [
+      "How can I track my order?",
+      "Also, how long do refunds take to process?"
+    ],
+    "scenario": "User asks about order tracking, then asks about refund processing time.",
+    "ground_truth": "Agent should explain tracking via account/orders page and that refunds take 5-7 business days after approval.",
+    "expected_tools": ["search_faq"],
+    "eval_category": "rag"
+  }
+]

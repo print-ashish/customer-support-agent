@@ -14,8 +14,12 @@ langgraph
 langgraph-checkpoint-postgres
 langchain
 langchain-core
+langchain
 langchain-groq
 langfuse
 python-dotenv
 redis>=5.0.0
-sentence-transformers
+sentence-transformers==3.4.1
+ragas==0.2.15
+datasets
+langchain-community>=0.4.2

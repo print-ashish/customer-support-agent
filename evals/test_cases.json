@@ -1,53 +1,58 @@
-
-
 [
-
   {
     "input": "Do you ship internationally?",
     "expected_topic": "faq",
     "ground_truth": "Yes, we ship to most countries worldwide. International shipping usually takes 7-14 business days.",
-    "expected_tool": "search_faq"
+    "expected_tool": "search_faq",
+    "eval_category": "rag"
   },
   {
     "input": "What payment methods do you accept?",
     "expected_topic": "faq",
     "ground_truth": "We accept all major credit cards, PayPal, and Apple Pay.",
-    "expected_tool": "search_faq"
+    "expected_tool": "search_faq",
+    "eval_category": "rag"
   },
   {
     "input": "How can I track my order?",
     "expected_topic": "faq",
     "ground_truth": "You can track your order by logging into your account and visiting the Orders page, or ask the support agent for your order status.",
-    "expected_tool": "search_faq"
+    "expected_tool": "search_faq",
+    "eval_category": "rag"
   },
   {
     "input": "Can I change my shipping address after placing an order?",
     "expected_topic": "faq",
     "ground_truth": "You can change your shipping address before the order is dispatched by contacting support. Once dispatched, we cannot change it.",
-    "expected_tool": "search_faq"
+    "expected_tool": "search_faq",
+    "eval_category": "rag"
   },
   {
     "input": "Within how many days can I request a refund?",
     "expected_topic": "refund_policy",
     "ground_truth": "You must request a refund within 30 days of the delivery date.",
-    "expected_tool": "search_faq"
+    "expected_tool": "search_faq",
+    "eval_category": "rag"
   },
   {
     "input": "How long does it take to process a refund?",
     "expected_topic": "refund_policy",
     "ground_truth": "If eligible, we will process the refund to your original payment method within 5-7 business days.",
-    "expected_tool": "search_faq"
+    "expected_tool": "search_faq",
+    "eval_category": "rag"
   },
   {
     "input": "Can I get a refund on a personalized item?",
     "expected_topic": "refund_policy",
     "ground_truth": "No. Personalized items are non-refundable.",
-    "expected_tool": "search_faq"
+    "expected_tool": "search_faq",
+    "eval_category": "rag"
   },
   {
     "input": "What is the status of order 99999?",
     "expected_topic": "order_status",
     "ground_truth": "The agent should indicate that the order was not found or does not belong to this user.",
-    "expected_tool": "get_order_status"
+    "expected_tool": "get_order_status",
+    "eval_category": "tool"
   }
 ]

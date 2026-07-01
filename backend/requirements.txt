@@ -14,8 +14,9 @@ langgraph
 langgraph-checkpoint-postgres
 langchain
 langchain-core
-langchain
 langchain-groq
+litellm>=1.55.0
+langchain-litellm==0.2.0
 langfuse
 python-dotenv
 redis>=5.0.0

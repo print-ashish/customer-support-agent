@@ -5,7 +5,7 @@ from langchain_core.tools import tool, InjectedToolArg
 from langchain_core.runnables import RunnableConfig
 from sqlalchemy import select
 
-from db.models import Order, Escalation, Message as DBMessage, Conversation
+from db.models import Order, Escalation
 from db.session import async_session_maker
 from rag.retriever import search_faq as search_faq_async
 
@@ -258,45 +258,6 @@ async def search_faq(query: str) -> str:
 
 
 @tool
-async def recall_memory(
-    limit: int = 10,
-    *,
-    config: Annotated[RunnableConfig, InjectedToolArg()],
-) -> str:
-    """Recall the last N messages from the current chat session."""
-    conversation_id = _conversation_id(config)
-    user_id = _user_id(config)
-    if not user_id:
-        return "Error: User ID not found in context."
-
-    async with async_session_maker() as db:
-        convo_id = conversation_id
-        if not convo_id:
-            result = await db.execute(
-                select(Conversation)
-                .filter(Conversation.user_id == user_id)
-                .order_by(Conversation.created_at.desc())
-            )
-            convo = result.scalars().first()
-            if not convo:
-                return "No past conversations found."
-            convo_id = convo.id
-
-        result_messages = await db.execute(
-            select(DBMessage)
-            .filter(DBMessage.conversation_id == convo_id)
-            .order_by(DBMessage.created_at.desc())
-            .limit(limit)
-        )
-        messages = result_messages.scalars().all()
-        if not messages:
-            return "No messages found in recent conversation."
-
-        messages.reverse()
-        return "\n".join([f"{m.role}: {m.content}" for m in messages])
-
-
-@tool
 async def escalate_to_human(
     reason: str,
     category: str = "general",
@@ -327,6 +288,5 @@ tools = [
     check_refund_eligibility,
     process_refund,
     search_faq,
-    recall_memory,
     escalate_to_human,
 ]

@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from langchain_core.messages import SystemMessage
-from langchain_groq import ChatGroq
+from langchain_litellm import ChatLiteLLM
 from langgraph.prebuilt import ToolNode
 
 from agent.state import AgentState
@@ -11,9 +11,13 @@ from agent.system_prompt import SYSTEM_PROMPT
 
 load_dotenv()
 
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+if not model.startswith("groq/"):
+    model = f"groq/{model}"
 
-llm = ChatGroq(temperature=0, model_name=GROQ_MODEL, groq_api_key=os.getenv("GROQ_API_KEY"))
+fallbacks = [m.strip() for m in os.getenv("LLM_FALLBACKS", "groq/llama-3.3-70b-versatile").split(",") if m.strip()]
+
+llm = ChatLiteLLM(model=model, temperature=0, model_kwargs={"fallbacks": fallbacks})
 llm_with_tools = llm.bind_tools(tools)
 tool_node = ToolNode(tools)
 
